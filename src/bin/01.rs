@@ -6,7 +6,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         let mut first = None;
         let mut last = None;
         for c in line.chars() {
-            if c.is_digit(10) {
+            if c.is_ascii_digit() {
                 if first.is_none() {
                     first = c.to_digit(10);
                 }
