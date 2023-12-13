@@ -1,40 +1,61 @@
-use regex::Regex;
+use nom::{
+    bytes::complete::tag,
+    character::complete::{digit1, newline, space1},
+    combinator::map_res,
+    multi::{many1, separated_list1},
+    sequence::{separated_pair, tuple},
+    IResult,
+};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 advent_of_code::solution!(4);
 
+#[derive(Debug)]
+struct ScratchCard {
+    number: usize,
+    winning_nums: HashSet<usize>,
+    hand_nums: HashSet<usize>,
+}
+
+fn parse_scratch_card_set(input: &str) -> IResult<&str, HashSet<usize>> {
+    let (input, scratch_card_set) =
+        separated_list1(space1, map_res(digit1, |x: &str| x.parse::<usize>()))(input)?;
+    Ok((input, scratch_card_set.into_iter().collect()))
+}
+fn parse_scratch_card(input: &str) -> IResult<&str, ScratchCard> {
+    let (input, _) = tag("Card")(input)?;
+    let (input, _) = space1(input)?;
+    let (input, number) = map_res(digit1, |x: &str| x.parse::<usize>())(input)?;
+    let (input, _) = tag(":")(input)?;
+    let (input, _) = space1(input)?;
+    let (input, (winning_nums, hand_nums)) = separated_pair(
+        parse_scratch_card_set,
+        tuple((space1, tag("|"), space1)),
+        parse_scratch_card_set,
+    )(input)?;
+    let (input, _) = newline(input)?;
+
+    Ok((
+        input,
+        ScratchCard {
+            number,
+            winning_nums,
+            hand_nums,
+        },
+    ))
+}
+fn parse_input(input: &str) -> IResult<&str, Vec<ScratchCard>> {
+    many1(parse_scratch_card)(input)
+}
+
 pub fn part_one(input: &str) -> Option<u32> {
-    let input_re = Regex::new(r#"^Card\s+(\d+): ((\s|\d)+) \| ((\s|\d)+)$"#).unwrap();
+    let (_, cards) = parse_input(input).ok()?;
 
+    println!("{:?}", cards);
     let mut sum = 0;
-    for line in input.lines() {
-        let captures = input_re.captures(line).map(|captures| {
-            captures
-                .iter() // All the captured groups
-                .skip(1) // Skipping the complete match
-                .flatten() // Ignoring all empty optional matches
-                .map(|c| c.as_str()) // Grab the original strings
-                .collect::<Vec<_>>() // Create a vector
-        })?;
-
-        let _card_num = captures[0].parse::<usize>().ok()?;
-
-        let winning_str = captures[1];
-        let hand_str = captures[3];
-
-        let winning_nums = winning_str
-            .split(' ')
-            .filter(|s| !s.is_empty())
-            .map(|s| s.parse::<usize>().unwrap())
-            .collect::<HashSet<usize>>();
-        let hand_nums = hand_str
-            .split(' ')
-            .filter(|s| !s.is_empty())
-            .map(|s| s.parse::<usize>().unwrap())
-            .collect::<HashSet<usize>>();
-
-        let winning_count = winning_nums.intersection(&hand_nums).count();
+    for card in cards {
+        let winning_count = card.winning_nums.intersection(&card.hand_nums).count();
         if winning_count > 0 {
             sum += 1 << (winning_count - 1);
         }
@@ -43,40 +64,16 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let input_re = Regex::new(r#"^Card\s+(\d+): ((\s|\d)+) \| ((\s|\d)+)$"#).unwrap();
+    let (_, cards) = parse_input(input).ok()?;
 
     let mut card_counts: HashMap<usize, usize> = HashMap::new();
-    for line in input.lines() {
-        let captures = input_re.captures(line).map(|captures| {
-            captures
-                .iter() // All the captured groups
-                .skip(1) // Skipping the complete match
-                .flatten() // Ignoring all empty optional matches
-                .map(|c| c.as_str()) // Grab the original strings
-                .collect::<Vec<_>>() // Create a vector
-        })?;
+    for card in cards {
+        card_counts.entry(card.number).or_insert(1);
+        let card_count = card_counts.get(&card.number).copied().unwrap();
 
-        let card_num = captures[0].parse::<usize>().ok()?;
-        card_counts.entry(card_num).or_insert(1);
-        let card_count = card_counts.get(&card_num).copied().unwrap();
-
-        let winning_str = captures[1];
-        let hand_str = captures[3];
-
-        let winning_nums = winning_str
-            .split(' ')
-            .filter(|s| !s.is_empty())
-            .map(|s| s.parse::<usize>().unwrap())
-            .collect::<HashSet<usize>>();
-        let hand_nums = hand_str
-            .split(' ')
-            .filter(|s| !s.is_empty())
-            .map(|s| s.parse::<usize>().unwrap())
-            .collect::<HashSet<usize>>();
-
-        let winning_count = winning_nums.intersection(&hand_nums).count();
+        let winning_count = card.winning_nums.intersection(&card.hand_nums).count();
         for index in 1..(winning_count + 1) {
-            let existing_card_count = card_counts.entry(card_num + index).or_insert(1);
+            let existing_card_count = card_counts.entry(card.number + index).or_insert(1);
             *existing_card_count += card_count;
         }
     }
