@@ -1,6 +1,6 @@
 use nom::{
     bytes::complete::tag,
-    character::complete::{digit1, newline, space1},
+    character::complete::{digit1, line_ending, space1},
     combinator::map_res,
     multi::{many1, separated_list1},
     sequence::{separated_pair, tuple},
@@ -34,7 +34,7 @@ fn parse_scratch_card(input: &str) -> IResult<&str, ScratchCard> {
         tuple((space1, tag("|"), space1)),
         parse_scratch_card_set,
     )(input)?;
-    let (input, _) = newline(input)?;
+    let (input, _) = line_ending(input)?;
 
     Ok((
         input,

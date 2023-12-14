@@ -1,6 +1,6 @@
 use nom::{
     branch::alt,
-    character::complete::{char, digit1, newline, space1},
+    character::complete::{char, digit1, line_ending, space1},
     combinator::map_res,
     multi::{count, separated_list1},
     sequence::separated_pair,
@@ -10,13 +10,18 @@ use nom::{
 advent_of_code::solution!(7);
 
 pub fn part_one(input: &str) -> Option<u32> {
+    let (_, hands_with_bid) = parse_input(input).ok()?;
+    for hand_with_bid in hands_with_bid {
+        println!("{:?} {:?}", hand_with_bid.hand, hand_with_bid.bid);
+    }
     None
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(_input: &str) -> Option<u32> {
     None
 }
 
+#[derive(Debug)]
 struct HandWithBid {
     hand: Hand,
     bid: u32,
@@ -24,7 +29,7 @@ struct HandWithBid {
 
 fn parse_input(input: &str) -> IResult<&str, Vec<HandWithBid>> {
     separated_list1(
-        newline,
+        line_ending,
         map_res(
             separated_pair(parse_hand, space1, parse_number),
             |(hand, bid): (Hand, u32)| Ok::<HandWithBid, &'static str>(HandWithBid { hand, bid }),
@@ -32,6 +37,7 @@ fn parse_input(input: &str) -> IResult<&str, Vec<HandWithBid>> {
     )(input)
 }
 
+#[derive(Debug)]
 struct Hand(Vec<Card>);
 
 fn parse_hand(input: &str) -> IResult<&str, Hand> {
@@ -40,7 +46,7 @@ fn parse_hand(input: &str) -> IResult<&str, Hand> {
     })(input)
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Card {
     Two,
     Three,
@@ -105,7 +111,8 @@ mod tests {
     fn test_parse_input() {
         let input = advent_of_code::template::read_file("examples", DAY);
         let (remaining, _) = parse_input(&input).unwrap();
-        assert_eq!(remaining, "\n");
+        let (remaining, _) = line_ending::<&str, nom::error::Error<&str>>(remaining).unwrap();
+        assert_eq!(remaining, "");
     }
 
     #[test]

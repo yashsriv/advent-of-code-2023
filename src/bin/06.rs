@@ -1,6 +1,6 @@
 use nom::{
     bytes::complete::tag,
-    character::complete::{digit1, newline, space1},
+    character::complete::{digit1, line_ending, space1},
     combinator::map_res,
     multi::separated_list1,
     IResult,
@@ -28,7 +28,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(product)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(_input: &str) -> Option<u32> {
     None
 }
 
@@ -42,11 +42,11 @@ fn parse_input(input: &str) -> IResult<&str, Vec<RaceResult>> {
     let (input, _) = tag("Time:")(input)?;
     let (input, _) = space1(input)?;
     let (input, times) = separated_list1(space1, parse_number)(input)?;
-    let (input, _) = newline(input)?;
+    let (input, _) = line_ending(input)?;
     let (input, _) = tag("Distance:")(input)?;
     let (input, _) = space1(input)?;
     let (input, distances) = separated_list1(space1, parse_number)(input)?;
-    let (input, _) = newline(input)?;
+    let (input, _) = line_ending(input)?;
 
     let mut result = Vec::new();
     for i in 0..times.len() {

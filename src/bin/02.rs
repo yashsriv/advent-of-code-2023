@@ -1,7 +1,7 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::complete::{digit1, newline},
+    character::complete::{digit1, line_ending},
     combinator::map_res,
     multi::{many0, separated_list1},
     IResult,
@@ -93,7 +93,7 @@ fn parse_single_line(input: &str) -> IResult<&str, Game> {
     let (input, number) = map_res(digit1, from_dec)(input)?;
     let (input, _) = tag(": ")(input)?;
     let (input, draws) = parse_game(input)?;
-    let (input, _) = newline(input)?;
+    let (input, _) = line_ending(input)?;
 
     Ok((input, Game { number, draws }))
 }
@@ -121,6 +121,13 @@ fn from_dec(input: &str) -> Result<u32, std::num::ParseIntError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_input() {
+        let input = advent_of_code::template::read_file("examples", DAY);
+        let (remaining, _) = parse_entire_input(&input).unwrap();
+        assert_eq!(remaining, "");
+    }
 
     #[test]
     fn test_part_one() {

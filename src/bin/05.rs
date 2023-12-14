@@ -1,9 +1,9 @@
 use nom::{
     bytes::complete::tag,
-    character::complete::{digit1, multispace0, newline, space1},
+    character::complete::{digit1, line_ending, multispace0, space1},
     combinator::map_res,
     multi::separated_list1,
-    sequence::{separated_pair, tuple},
+    sequence::tuple,
     IResult,
 };
 use std::collections::BTreeMap;
@@ -19,7 +19,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         .min_by(|x, y| x.cmp(y))
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(_input: &str) -> Option<u32> {
     None
 }
 
@@ -108,7 +108,8 @@ fn parse_input(input: &str) -> IResult<&str, Almanac> {
 
 fn parse_map<'a>(name: &str, input: &'a str) -> IResult<&'a str, BTreeMap<u32, MapEntry>> {
     let (input, _) = tag(name)(input)?;
-    let (input, _) = tag(" map:\n")(input)?;
+    let (input, _) = tag(" map:")(input)?;
+    let (input, _) = line_ending(input)?;
     let (input, result) = map_res(parse_mapping_ranges, map_from_mapping_ranges)(input)?;
     let (input, _) = multispace0(input)?;
     Ok((input, result))
@@ -129,7 +130,7 @@ fn map_from_mapping_ranges(ranges: Vec<Range>) -> Result<BTreeMap<u32, MapEntry>
 }
 
 fn parse_mapping_ranges(input: &str) -> IResult<&str, Vec<Range>> {
-    separated_list1(newline, parse_mapping_range)(input)
+    separated_list1(line_ending, parse_mapping_range)(input)
 }
 
 fn parse_mapping_range(input: &str) -> IResult<&str, Range> {
