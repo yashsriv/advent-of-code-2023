@@ -10,110 +10,142 @@ use std::collections::BTreeMap;
 
 advent_of_code::solution!(5);
 
-pub fn part_one(input: &str) -> Option<u32> {
-    let (_, almanac) = parse_input(input).ok()?;
-    almanac
-        .seeds
+pub fn part_one(input: &str) -> Option<u64> {
+    let (_, (seeds, almanac)) = parse_input(input).ok()?;
+    seeds
         .iter()
         .map(|seed| get_seed_location(*seed, &almanac))
         .min_by(|x, y| x.cmp(y))
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    let (_, almanac) = parse_input_2(input).ok()?;
-    almanac
-        .seeds
-        .iter()
-        .map(|seed| get_seed_location(*seed, &almanac))
-        .min_by(|x, y| x.cmp(y))
+pub fn part_two(input: &str) -> Option<u64> {
+    let (_, ParsedInput2(seeds, almanac)) = parse_input_2(input).ok()?;
+    let soil = map_ranges_to_next_range(seeds, &almanac.seed_to_soil_map);
+    let fertilizer = map_ranges_to_next_range(soil, &almanac.soil_to_fertilizer_map);
+    let water = map_ranges_to_next_range(fertilizer, &almanac.fertilizer_to_water_map);
+    let light = map_ranges_to_next_range(water, &almanac.water_to_light_map);
+    let temperature = map_ranges_to_next_range(light, &almanac.light_to_temperature_map);
+    let humidity = map_ranges_to_next_range(temperature, &almanac.temperature_to_humidity_map);
+    let location = map_ranges_to_next_range(humidity, &almanac.humidity_to_location_map);
+    location
+        .into_iter()
+        .min_by_key(|(start, _)| *start)
+        .map(|(start, _)| start)
 }
 
 #[derive(Debug, PartialEq)]
 struct Range {
-    destination_start: u32,
-    source_start: u32,
-    length: u32,
+    destination_start: u64,
+    source_start: u64,
+    length: u64,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct MapEntry {
-    length: u32,
-    destination_start: u32,
+    length: u64,
+    destination_start: u64,
 }
 
 #[derive(Debug, PartialEq)]
 struct Almanac {
-    seeds: Vec<u32>,
-    seed_to_soil_map: Vec<(u32, MapEntry)>,
-    soil_to_fertilizer_map: Vec<(u32, MapEntry)>,
-    fertilizer_to_water_map: Vec<(u32, MapEntry)>,
-    water_to_light_map: Vec<(u32, MapEntry)>,
-    light_to_temperature_map: Vec<(u32, MapEntry)>,
-    temperature_to_humidity_map: Vec<(u32, MapEntry)>,
-    humidity_to_location_map: Vec<(u32, MapEntry)>,
+    seed_to_soil_map: Vec<(u64, MapEntry)>,
+    soil_to_fertilizer_map: Vec<(u64, MapEntry)>,
+    fertilizer_to_water_map: Vec<(u64, MapEntry)>,
+    water_to_light_map: Vec<(u64, MapEntry)>,
+    light_to_temperature_map: Vec<(u64, MapEntry)>,
+    temperature_to_humidity_map: Vec<(u64, MapEntry)>,
+    humidity_to_location_map: Vec<(u64, MapEntry)>,
 }
 
-fn get_mapping_from_map(needle: u32, map: &[(u32, MapEntry)]) -> u32 {
-    let index = match map.binary_search_by_key(&needle, |(source_start, _)| *source_start) {
-        Ok(index) => index,
-        Err(0) => return needle,
-        Err(index) => index - 1,
-    };
+fn map_ranges_to_next_range(
+    mut source: Vec<(u64, u64)>,
+    mappings: &[(u64, MapEntry)],
+) -> Vec<(u64, u64)> {
+    let mut new_range = Vec::new();
 
-    let (key, value) = &map[index];
-    assert!(needle >= *key);
-    let distance = needle - key;
-    if distance < value.length {
-        value.destination_start + distance
-    } else {
-        needle
+    let mut i = 0;
+    let mut j = 0;
+
+    while i < source.len() && j < mappings.len() {
+        let (source_start, source_end) = source[i];
+
+        let (mapping_start, mapping_entry) = mappings[j];
+        let mapping_end = mapping_start + mapping_entry.length - 1;
+
+        if mapping_end < source_start {
+            j += 1;
+            continue;
+        } else if mapping_start > source_start {
+            if source_end < mapping_start {
+                new_range.push((source_start, source_end));
+                i += 1;
+            } else {
+                new_range.push((source_start, mapping_start - 1));
+                source[i] = (mapping_start, source_end);
+            }
+        } else if mapping_end >= source_end {
+            let mapped_start = mapping_entry.destination_start + (source_start - mapping_start);
+            let mapped_end = mapped_start + (source_end - source_start);
+            new_range.push((mapped_start, mapped_end));
+            i += 1;
+        } else if mapping_end < source_end {
+            let mapped_start = mapping_entry.destination_start + (source_start - mapping_start);
+            let mapped_end = mapped_start + (mapping_end - source_start);
+            new_range.push((mapped_start, mapped_end));
+            source[i] = (mapping_end + 1, source_end);
+            j += 1;
+        } else {
+            panic!("Should not occur");
+        }
     }
+
+    while i != source.len() {
+        new_range.push(source[i]);
+        i += 1;
+    }
+    new_range.sort_by_key(|(start, _)| *start);
+    new_range
 }
 
-fn get_seed_location(seed: u32, almanac: &Almanac) -> u32 {
-    let soil = get_mapping_from_map(seed, &almanac.seed_to_soil_map);
-    let fertilizer = get_mapping_from_map(soil, &almanac.soil_to_fertilizer_map);
-    let water = get_mapping_from_map(fertilizer, &almanac.fertilizer_to_water_map);
-    let light = get_mapping_from_map(water, &almanac.water_to_light_map);
-    let temperature = get_mapping_from_map(light, &almanac.light_to_temperature_map);
-    let humidity = get_mapping_from_map(temperature, &almanac.temperature_to_humidity_map);
-    get_mapping_from_map(humidity, &almanac.humidity_to_location_map)
+fn get_seed_location(seed: u64, almanac: &Almanac) -> u64 {
+    let soil = map_ranges_to_next_range(vec![(seed, seed)], &almanac.seed_to_soil_map);
+    let fertilizer = map_ranges_to_next_range(soil, &almanac.soil_to_fertilizer_map);
+    let water = map_ranges_to_next_range(fertilizer, &almanac.fertilizer_to_water_map);
+    let light = map_ranges_to_next_range(water, &almanac.water_to_light_map);
+    let temperature = map_ranges_to_next_range(light, &almanac.light_to_temperature_map);
+    let humidity = map_ranges_to_next_range(temperature, &almanac.temperature_to_humidity_map);
+    let location = map_ranges_to_next_range(humidity, &almanac.humidity_to_location_map);
+    location[0].0
 }
 
-fn parse_input(input: &str) -> IResult<&str, Almanac> {
+fn parse_input(input: &str) -> IResult<&str, (Vec<u64>, Almanac)> {
     let (input, _) = tag("seeds: ")(input)?;
     let (input, seeds) = separated_list1(space1, parse_number)(input)?;
     let (input, _) = multispace0(input)?;
 
-    let (input, seed_to_soil_map) = parse_map("seed-to-soil", input)?;
-    let (input, soil_to_fertilizer_map) = parse_map("soil-to-fertilizer", input)?;
-    let (input, fertilizer_to_water_map) = parse_map("fertilizer-to-water", input)?;
-    let (input, water_to_light_map) = parse_map("water-to-light", input)?;
-    let (input, light_to_temperature_map) = parse_map("light-to-temperature", input)?;
-    let (input, temperature_to_humidity_map) = parse_map("temperature-to-humidity", input)?;
-    let (input, humidity_to_location_map) = parse_map("humidity-to-location", input)?;
+    let (input, almanac) = parse_mappings(input)?;
 
-    Ok((
-        input,
-        Almanac {
-            seeds,
-            seed_to_soil_map,
-            soil_to_fertilizer_map,
-            fertilizer_to_water_map,
-            water_to_light_map,
-            light_to_temperature_map,
-            temperature_to_humidity_map,
-            humidity_to_location_map,
-        },
-    ))
+    Ok((input, (seeds, almanac)))
 }
 
-fn parse_input_2(input: &str) -> IResult<&str, Almanac> {
+struct ParsedInput2(Vec<(u64, u64)>, Almanac);
+fn parse_input_2(input: &str) -> IResult<&str, ParsedInput2> {
     let (input, _) = tag("seeds: ")(input)?;
-    let (input, seed_ranges) =
-        separated_list1(space1, separated_pair(parse_number, space1, parse_number))(input)?;
+    let (input, seed_ranges) = separated_list1(
+        space1,
+        map_res(
+            separated_pair(parse_number, space1, parse_number),
+            |(start, length)| Ok::<(u64, u64), &'static str>((start, start + length - 1)),
+        ),
+    )(input)?;
     let (input, _) = multispace0(input)?;
 
+    let (input, almanac) = parse_mappings(input)?;
+
+    Ok((input, ParsedInput2(seed_ranges, almanac)))
+}
+
+fn parse_mappings(input: &str) -> IResult<&str, Almanac> {
     let (input, seed_to_soil_map) = parse_map("seed-to-soil", input)?;
     let (input, soil_to_fertilizer_map) = parse_map("soil-to-fertilizer", input)?;
     let (input, fertilizer_to_water_map) = parse_map("fertilizer-to-water", input)?;
@@ -122,17 +154,9 @@ fn parse_input_2(input: &str) -> IResult<&str, Almanac> {
     let (input, temperature_to_humidity_map) = parse_map("temperature-to-humidity", input)?;
     let (input, humidity_to_location_map) = parse_map("humidity-to-location", input)?;
 
-    let mut seeds = Vec::new();
-    for (seed_start, range) in seed_ranges {
-        for i in 0..range {
-            seeds.push(seed_start + i);
-        }
-    }
-
     Ok((
         input,
         Almanac {
-            seeds,
             seed_to_soil_map,
             soil_to_fertilizer_map,
             fertilizer_to_water_map,
@@ -144,7 +168,7 @@ fn parse_input_2(input: &str) -> IResult<&str, Almanac> {
     ))
 }
 
-fn parse_map<'a>(name: &str, input: &'a str) -> IResult<&'a str, Vec<(u32, MapEntry)>> {
+fn parse_map<'a>(name: &str, input: &'a str) -> IResult<&'a str, Vec<(u64, MapEntry)>> {
     let (input, _) = tag(name)(input)?;
     let (input, _) = tag(" map:")(input)?;
     let (input, _) = line_ending(input)?;
@@ -153,7 +177,7 @@ fn parse_map<'a>(name: &str, input: &'a str) -> IResult<&'a str, Vec<(u32, MapEn
     Ok((input, result))
 }
 
-fn map_from_mapping_ranges(ranges: Vec<Range>) -> Result<Vec<(u32, MapEntry)>, &'static str> {
+fn map_from_mapping_ranges(ranges: Vec<Range>) -> Result<Vec<(u64, MapEntry)>, &'static str> {
     let mut map = BTreeMap::new();
     for range in ranges {
         map.insert(
@@ -184,8 +208,8 @@ fn parse_mapping_range(input: &str) -> IResult<&str, Range> {
     ))
 }
 
-fn parse_number(input: &str) -> IResult<&str, u32> {
-    map_res(digit1, |x: &str| x.parse::<u32>())(input)
+fn parse_number(input: &str) -> IResult<&str, u64> {
+    map_res(digit1, |x: &str| x.parse::<u64>())(input)
 }
 
 #[cfg(test)]
