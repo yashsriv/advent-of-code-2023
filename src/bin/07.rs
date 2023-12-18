@@ -3,7 +3,7 @@ use std::{cmp::Ordering, collections::HashMap};
 use nom::{
     branch::alt,
     character::complete::{char, digit1, line_ending, space1},
-    combinator::map_res,
+    combinator::{map, map_res},
     multi::{count, separated_list1},
     sequence::separated_pair,
     IResult,
@@ -149,9 +149,9 @@ pub fn part_two(input: &str) -> Option<u32> {
 fn parse_input(input: &str) -> IResult<&str, Vec<HandWithBid>> {
     separated_list1(
         line_ending,
-        map_res(
+        map(
             separated_pair(parse_hand, space1, parse_number),
-            |(hand, bid): (Hand, u32)| Ok::<HandWithBid, &'static str>(HandWithBid { hand, bid }),
+            |(hand, bid): (Hand, u32)| HandWithBid { hand, bid },
         ),
     )(input)
 }
@@ -159,66 +159,46 @@ fn parse_input(input: &str) -> IResult<&str, Vec<HandWithBid>> {
 fn parse_input_2(input: &str) -> IResult<&str, Vec<HandWithBid>> {
     separated_list1(
         line_ending,
-        map_res(
+        map(
             separated_pair(parse_hand_2, space1, parse_number),
-            |(hand, bid): (Hand, u32)| Ok::<HandWithBid, &'static str>(HandWithBid { hand, bid }),
+            |(hand, bid): (Hand, u32)| HandWithBid { hand, bid },
         ),
     )(input)
 }
 
 fn parse_hand(input: &str) -> IResult<&str, Hand> {
-    map_res(count(parse_card(false), 5), |hand: Vec<Card>| {
-        Ok::<Hand, &'static str>(Hand(hand))
-    })(input)
+    map(count(parse_card(false), 5), |hand: Vec<Card>| Hand(hand))(input)
 }
 
 fn parse_hand_2(input: &str) -> IResult<&str, Hand> {
-    map_res(count(parse_card(true), 5), |hand: Vec<Card>| {
-        Ok::<Hand, &'static str>(Hand(hand))
-    })(input)
+    map(count(parse_card(true), 5), |hand: Vec<Card>| Hand(hand))(input)
 }
 
 fn parse_card(j_is_joker: bool) -> impl FnMut(&str) -> IResult<&str, Card> {
     move |input| -> IResult<&str, Card> {
-        map_res(
-            alt((
-                char('A'),
-                char('K'),
-                char('Q'),
+        alt((
+            map(char('A'), |_| Card::Ace),
+            map(char('K'), |_| Card::King),
+            map(char('Q'), |_| Card::Queen),
+            map(
                 char('J'),
-                char('T'),
-                char('9'),
-                char('8'),
-                char('7'),
-                char('6'),
-                char('5'),
-                char('4'),
-                char('3'),
-                char('2'),
-            )),
-            |ch| match ch {
-                'A' => Ok(Card::Ace),
-                'K' => Ok(Card::King),
-                'Q' => Ok(Card::Queen),
-                'J' if j_is_joker => Ok(Card::Joker),
-                'J' => Ok(Card::Jack),
-                'T' => Ok(Card::Ten),
-                '9' => Ok(Card::Nine),
-                '8' => Ok(Card::Eight),
-                '7' => Ok(Card::Seven),
-                '6' => Ok(Card::Six),
-                '5' => Ok(Card::Five),
-                '4' => Ok(Card::Four),
-                '3' => Ok(Card::Three),
-                '2' => Ok(Card::Two),
-                _ => Err("Invalid card"),
-            },
-        )(input)
+                |_| if j_is_joker { Card::Joker } else { Card::Jack },
+            ),
+            map(char('T'), |_| Card::Ten),
+            map(char('9'), |_| Card::Nine),
+            map(char('8'), |_| Card::Eight),
+            map(char('7'), |_| Card::Seven),
+            map(char('6'), |_| Card::Six),
+            map(char('5'), |_| Card::Five),
+            map(char('4'), |_| Card::Four),
+            map(char('3'), |_| Card::Three),
+            map(char('2'), |_| Card::Two),
+        ))(input)
     }
 }
 
 fn parse_number(input: &str) -> IResult<&str, u32> {
-    map_res(digit1, |x: &str| x.parse::<u32>())(input)
+    map_res(digit1, str::parse)(input)
 }
 
 #[cfg(test)]

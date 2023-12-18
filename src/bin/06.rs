@@ -81,7 +81,7 @@ fn parse_input(input: &str) -> IResult<&str, Vec<RaceResult>> {
 }
 
 fn parse_number(input: &str) -> IResult<&str, u32> {
-    map_res(digit1, |x: &str| x.parse::<u32>())(input)
+    map_res(digit1, str::parse)(input)
 }
 
 #[cfg(test)]

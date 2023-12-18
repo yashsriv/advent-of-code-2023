@@ -1,7 +1,7 @@
 use nom::{
     bytes::complete::tag,
     character::complete::{digit1, line_ending, multispace0, space1},
-    combinator::map_res,
+    combinator::{map, map_res},
     multi::separated_list1,
     sequence::{separated_pair, tuple},
     IResult,
@@ -133,9 +133,9 @@ fn parse_input_2(input: &str) -> IResult<&str, ParsedInput2> {
     let (input, _) = tag("seeds: ")(input)?;
     let (input, seed_ranges) = separated_list1(
         space1,
-        map_res(
+        map(
             separated_pair(parse_number, space1, parse_number),
-            |(start, length)| Ok::<(u64, u64), &'static str>((start, start + length - 1)),
+            |(start, length)| (start, start + length - 1),
         ),
     )(input)?;
     let (input, _) = multispace0(input)?;
@@ -172,12 +172,12 @@ fn parse_map<'a>(name: &str, input: &'a str) -> IResult<&'a str, Vec<(u64, MapEn
     let (input, _) = tag(name)(input)?;
     let (input, _) = tag(" map:")(input)?;
     let (input, _) = line_ending(input)?;
-    let (input, result) = map_res(parse_mapping_ranges, map_from_mapping_ranges)(input)?;
+    let (input, result) = map(parse_mapping_ranges, map_from_mapping_ranges)(input)?;
     let (input, _) = multispace0(input)?;
     Ok((input, result))
 }
 
-fn map_from_mapping_ranges(ranges: Vec<Range>) -> Result<Vec<(u64, MapEntry)>, &'static str> {
+fn map_from_mapping_ranges(ranges: Vec<Range>) -> Vec<(u64, MapEntry)> {
     let mut map = BTreeMap::new();
     for range in ranges {
         map.insert(
@@ -188,7 +188,7 @@ fn map_from_mapping_ranges(ranges: Vec<Range>) -> Result<Vec<(u64, MapEntry)>, &
             },
         );
     }
-    Ok(map.into_iter().collect())
+    map.into_iter().collect()
 }
 
 fn parse_mapping_ranges(input: &str) -> IResult<&str, Vec<Range>> {
@@ -209,7 +209,7 @@ fn parse_mapping_range(input: &str) -> IResult<&str, Range> {
 }
 
 fn parse_number(input: &str) -> IResult<&str, u64> {
-    map_res(digit1, |x: &str| x.parse::<u64>())(input)
+    map_res(digit1, str::parse)(input)
 }
 
 #[cfg(test)]
@@ -267,13 +267,13 @@ mod tests {
         let result = map_from_mapping_ranges(ranges);
         assert_eq!(
             result,
-            Ok(vec![(
+            vec![(
                 98,
                 MapEntry {
                     destination_start: 50,
                     length: 2
                 }
-            )])
+            )]
         );
     }
 

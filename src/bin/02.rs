@@ -90,7 +90,7 @@ fn parse_entire_input(input: &str) -> IResult<&str, Vec<Game>> {
 
 fn parse_single_line(input: &str) -> IResult<&str, Game> {
     let (input, _) = tag("Game ")(input)?;
-    let (input, number) = map_res(digit1, from_dec)(input)?;
+    let (input, number) = map_res(digit1, str::parse)(input)?;
     let (input, _) = tag(": ")(input)?;
     let (input, draws) = parse_game(input)?;
     let (input, _) = line_ending(input)?;
@@ -107,15 +107,11 @@ fn parse_draws(input: &str) -> IResult<&str, Vec<Draw>> {
 }
 
 fn parse_draw(input: &str) -> IResult<&str, Draw> {
-    let (input, count) = map_res(digit1, from_dec)(input)?;
+    let (input, count) = map_res(digit1, str::parse)(input)?;
     let (input, _) = tag(" ")(input)?;
     let (input, color) = alt((tag("blue"), tag("green"), tag("red")))(input)?;
 
     Ok((input, Draw { color, count }))
-}
-
-fn from_dec(input: &str) -> Result<u32, std::num::ParseIntError> {
-    input.parse::<u32>()
 }
 
 #[cfg(test)]

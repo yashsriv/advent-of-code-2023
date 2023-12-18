@@ -4,7 +4,7 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alphanumeric1, char, line_ending, multispace1},
-    combinator::map_res,
+    combinator::map,
     multi::{many1, separated_list1},
     sequence::{delimited, separated_pair, terminated},
     IResult,
@@ -73,15 +73,14 @@ struct Node<'a> {
 struct DirectionMap<'a>(HashMap<&'a str, Node<'a>>);
 
 fn parse_instruction(input: &str) -> IResult<&str, Instruction> {
-    map_res(alt((char('L'), char('R'))), |ch: char| match ch {
-        'L' => Ok(Instruction::Left),
-        'R' => Ok(Instruction::Right),
-        _ => Err("impossible char in instruction parse"),
-    })(input)
+    alt((
+        map(char('L'), |_| Instruction::Left),
+        map(char('R'), |_| Instruction::Right),
+    ))(input)
 }
 
 fn parse_direction_map_entry(input: &str) -> IResult<&str, (&str, Node)> {
-    map_res(
+    map(
         separated_pair(
             alphanumeric1,
             tag(" = "),
@@ -91,7 +90,7 @@ fn parse_direction_map_entry(input: &str) -> IResult<&str, (&str, Node)> {
                 char(')'),
             ),
         ),
-        |(value, (left, right))| Ok::<_, &'static str>((value, Node { left, right, value })),
+        |(value, (left, right))| (value, Node { left, right, value }),
     )(input)
 }
 

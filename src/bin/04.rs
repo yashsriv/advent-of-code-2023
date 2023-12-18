@@ -19,14 +19,13 @@ struct ScratchCard {
 }
 
 fn parse_scratch_card_set(input: &str) -> IResult<&str, HashSet<usize>> {
-    let (input, scratch_card_set) =
-        separated_list1(space1, map_res(digit1, |x: &str| x.parse::<usize>()))(input)?;
+    let (input, scratch_card_set) = separated_list1(space1, map_res(digit1, str::parse))(input)?;
     Ok((input, scratch_card_set.into_iter().collect()))
 }
 fn parse_scratch_card(input: &str) -> IResult<&str, ScratchCard> {
     let (input, _) = tag("Card")(input)?;
     let (input, _) = space1(input)?;
-    let (input, number) = map_res(digit1, |x: &str| x.parse::<usize>())(input)?;
+    let (input, number) = map_res(digit1, str::parse)(input)?;
     let (input, _) = tag(":")(input)?;
     let (input, _) = space1(input)?;
     let (input, (winning_nums, hand_nums)) = separated_pair(
