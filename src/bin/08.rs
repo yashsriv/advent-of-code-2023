@@ -39,11 +39,11 @@ pub fn part_two(input: &str) -> Option<u32> {
     let mut count = 0;
     let mut current_nodes: Vec<&Node> = direction_map
         .values()
-        .filter(|Node { value, .. }| value.ends_with("A"))
+        .filter(|Node { value, .. }| value.ends_with('A'))
         .collect();
     while !current_nodes
         .iter()
-        .all(|Node { value, .. }| value.ends_with("Z"))
+        .all(|Node { value, .. }| value.ends_with('Z'))
     {
         let direction = iter.next()?;
         current_nodes = current_nodes
